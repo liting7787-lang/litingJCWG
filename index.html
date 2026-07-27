@@ -448,7 +448,7 @@
     </div>
     <div class="stat-card">
       <div class="stat-num streak-num"><span id="home-streak">0</span><span class="stat-unit">天</span></div>
-      <div class="stat-label">连续打卡</div>
+      <div class="stat-label">连续打开</div>
     </div>
   </div>
 
@@ -1013,7 +1013,7 @@ function renderHome() {
 
   const habits = LS.get('ting_habits', {items:[]});
   const records = LS.get('ting_habit_records', {});
-  document.getElementById('home-streak').textContent = calcStreak(records, habits.items.length);
+  document.getElementById('home-streak').textContent = getVisitStreak();
   applyFixedTasks(todayStr());
 }
 function homeToggleTask(taskId) {
@@ -1033,6 +1033,18 @@ function calcStreak(records, habitCount) {
     else break;
   }
   return streak;
+}
+
+/* 计算连续打开天数：每天第一次打开页面算 1 天，断了一天重置 */
+function getVisitStreak() {
+  const state = LS.get('ting_visit_streak', { lastVisit: '', streak: 0 });
+  const today = todayStr();
+  if (state.lastVisit === today) return state.streak;
+  const d = new Date(); d.setDate(d.getDate() - 1);
+  const yesterday = fmtDate(d);
+  const newStreak = (state.lastVisit === yesterday) ? state.streak + 1 : 1;
+  LS.set('ting_visit_streak', { lastVisit: today, streak: newStreak });
+  return newStreak;
 }
 
 /* ============================================================
