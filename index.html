@@ -2204,7 +2204,7 @@ function syncHeaders(prefer) {
 
 async function syncUpload(silent) {
   const code = syncGetCode();
-  if (!code) { if (!silent) { alert('请先设置同步码'); syncShowCode(true); } return; }
+  if (!code) { if (!silent) { alert('请先设置同步码'); syncShowCode(true); } return false; }
   const payload = { ts: Date.now(), data: syncCollectData() };
   // 防止空数据覆盖云端：本地用户数据为空时跳过上传
   const userDataKeys = ['ting_plan_tasks', 'ting_mood', 'ting_sleep', 'ting_habit_records', 'ting_reviews', 'ting_lesson_cards', 'ting_read_records'];
@@ -2220,7 +2220,7 @@ async function syncUpload(silent) {
   });
   if (!hasUserData) {
     if (!silent) alert('本地数据为空，已跳过上传以保护云端数据。\n\n请点「立即拉取」从云端恢复。');
-    return;
+    return false;
   }
   try {
     const res = await fetch(SUPABASE_URL + '/' + SYNC_TABLE, {
@@ -2236,8 +2236,10 @@ async function syncUpload(silent) {
     syncLastSnapshot = JSON.stringify(syncCollectData());
     syncRender();
     if (!silent) alert('已上传到云端 \u2601\ufe0f\n\n数据已永久保存');
+    return true;
   } catch (e) {
     if (!silent) alert('上传失败：' + e.message + '\n\n请检查网络，以及是否已在 Supabase 建表');
+    return false;
   }
 }
 
@@ -2262,6 +2264,7 @@ async function syncDownload(silent) {
         if (!silent) { alert('已从云端拉取最新数据 \ud83d\udce5\n\n页面即将刷新'); location.reload(); }
         return true;
       } else if (!silent) alert('本地已是最新，无需拉取');
+      return true; // silent 且本地已最新，也算成功
     }
   } catch (e) {
     if (!silent) alert('拉取失败：' + e.message);
@@ -2527,16 +2530,22 @@ function searchAll(keyword) {
       indicator.style.height = '50px';
       if (isDouble) {
         text.textContent = '⬆ 上传中...';
-        if (typeof syncUpload === 'function') syncUpload(true);
+        if (typeof syncUpload === 'function') {
+          syncUpload(true).then(ok => {
+            text.textContent = ok ? '✅ 已上传到云端' : '❌ 上传失败（请检查网络/同步码）';
+            setTimeout(() => { indicator.style.height = '0'; }, 1600);
+          });
+        }
       } else {
         text.textContent = '⬇ 拉取中...';
         if (typeof syncDownload === 'function') {
-          syncDownload(true).then(() => {
-            if (typeof renderHome === 'function') renderHome();
+          syncDownload(true).then(ok => {
+            text.textContent = ok ? '✅ 已拉取最新数据' : '❌ 拉取失败（请检查网络/同步码）';
+            if (ok && typeof renderHome === 'function') renderHome();
+            setTimeout(() => { indicator.style.height = '0'; }, 1600);
           });
         }
       }
-      setTimeout(() => { indicator.style.height = '0'; }, 1800);
     } else {
       indicator.style.height = '0';
     }
