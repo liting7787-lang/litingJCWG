@@ -414,6 +414,11 @@
 </head>
 <body>
 
+<!-- 下拉刷新同步指示器 -->
+<div id="pull-refresh-indicator" style="position:fixed; top:0; left:0; right:0; height:0; overflow:hidden; background:linear-gradient(180deg,#FFEFC4,#FFF8E7); display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--text-sub); transition:height .2s ease; z-index:50; font-weight:600;">
+  <span id="pull-refresh-text">↓ 下拉同步</span>
+</div>
+
 <!-- ========== 首页 ========== -->
 <div id="view-home" class="view active">
   <div class="home-header">
@@ -2480,6 +2485,64 @@ function searchAll(keyword) {
     (results.length > 30 ? '<div style="padding:10px;text-align:center;font-size:12px;color:var(--text-light);">还有 ' + (results.length - 30) + ' 条结果…</div>' : '') +
     '</div>';
 }
+
+/* ============================================================
+   下拉刷新同步（下拉一次拉取，1.5秒内连续两次下拉上传）
+============================================================ */
+(function() {
+  let startY = 0, distance = 0, pulling = false, lastPullTime = 0;
+  const threshold = 70;
+  const indicator = document.getElementById('pull-refresh-indicator');
+  const text = document.getElementById('pull-refresh-text');
+  if (!indicator || !text) return;
+
+  document.addEventListener('touchstart', (e) => {
+    if (window.scrollY > 5) return;
+    startY = e.touches[0].clientY;
+    pulling = true;
+    distance = 0;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!pulling || window.scrollY > 5) return;
+    distance = Math.max(0, e.touches[0].clientY - startY);
+    if (distance > 0) {
+      indicator.style.height = Math.min(distance, 100) + 'px';
+      if (distance > threshold) {
+        const now = Date.now();
+        text.textContent = (now - lastPullTime < 1500) ? '松开上传 ⬆' : '松开拉取 ⬇';
+      } else {
+        text.textContent = '↓ 下拉同步';
+      }
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', () => {
+    if (!pulling) return;
+    pulling = false;
+    if (distance > threshold) {
+      const now = Date.now();
+      const isDouble = (now - lastPullTime) < 1500;
+      lastPullTime = now;
+      indicator.style.height = '50px';
+      if (isDouble) {
+        text.textContent = '⬆ 上传中...';
+        if (typeof syncUpload === 'function') syncUpload(true);
+      } else {
+        text.textContent = '⬇ 拉取中...';
+        if (typeof syncDownload === 'function') {
+          syncDownload(true).then(() => {
+            if (typeof renderHome === 'function') renderHome();
+          });
+        }
+      }
+      setTimeout(() => { indicator.style.height = '0'; }, 1800);
+    } else {
+      indicator.style.height = '0';
+    }
+    distance = 0;
+  }, { passive: true });
+})();
 
 </script>
 
