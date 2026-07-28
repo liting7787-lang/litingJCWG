@@ -2199,7 +2199,8 @@ window.onload = function() {
 const SUPABASE_URL = 'https://dsoaotyesdpnxqlrdhzc.supabase.co/rest/v1';
 const SUPABASE_KEY = 'sb_publishable_gvyHs-m_cCanWCXR5niv-A_rt4LOIAz';
 const SYNC_TABLE = 'ting_sync';
-function syncGetCode() { return localStorage.getItem('ting_sync_code') || ''; }
+const SYNC_CODE_FALLBACK = '李婷家财万贯';
+function syncGetCode() { return localStorage.getItem('ting_sync_code') || SYNC_CODE_FALLBACK; }
 function syncSetCode(c) { if (c) localStorage.setItem('ting_sync_code', c); else localStorage.removeItem('ting_sync_code'); }
 
 function syncCollectData() {
